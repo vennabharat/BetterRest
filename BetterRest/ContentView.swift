@@ -10,64 +10,90 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @State private var wakeUp = Date.now
-    @State private var desiredSleep = 8.0
-    @State private var coffeeIntake = 1
+    @State private var wakeUp = defaultWakeupTime
+    @State private var sleepAmount = 8.0
+    @State private var coffeeConsumed = 1
     
     @State private var showingAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     
-    func sleepAmount() {
-        
-        do {
+    static var defaultWakeupTime: Date {
+        var components = DateComponents()
+        components.hour = 4
+        components.minute = 0
+        let date = Calendar.current.date(from: components)
+        return date ?? Date.now
+    }
+    
+    func actualSleep() {
+        do{
             
             let config = MLModelConfiguration()
             let model = try SleepCalculator(configuration: config)
             
             let components = Calendar.current.dateComponents([.hour, .minute], from: wakeUp)
             let hour = (components.hour ?? 0) * 60 * 60
-            let minute = (components.minute ?? 0) * 60
+            let minute = (components.minute ?? 0) * 60 * 60
             
-            let prediction = try model.prediction(wake: Double(hour + minute), estimatedSleep: desiredSleep, coffee: Double(coffeeIntake))
+            let prediction = try model.prediction(wake: Double(hour + minute), estimatedSleep: sleepAmount, coffee: Double(coffeeConsumed+1))
             
             let bedTime = wakeUp - prediction.actualSleep
             
-            alertTitle = "Your estimated bed time is:"
+            alertTitle = "Your estimated bed time is"
             alertMessage = bedTime.formatted(date: .omitted, time: .shortened)
             
         } catch {
-            
-            alertTitle = "data not found"
-            alertMessage = "Error"
-            
+            alertTitle = "Error"
+            alertMessage = "Data error"
         }
         
-        showingAlert = true
+        showingAlert.toggle()
     }
     
     var body: some View {
         NavigationStack {
-            
-            VStack {
+            Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("When do you want to wakeup?")
+                        DatePicker("select time", selection: $wakeUp, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("How long do you want to sleep?")
+                        Stepper("Required sleep in hours: \(sleepAmount.formatted())", value: $sleepAmount, in: 4...12, step: 0.25)
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Cups of coffee consumed")
+                        //                    Stepper("Coffee cups: \(coffeeConsumed)", value: $coffeeConsumed, in: 1...20)
+                        Picker("Coffee consumed", selection: $coffeeConsumed){
+                            ForEach(1..<21){
+                                Text("\($0)")
+                            }
+                        }
+                    }
+                }
+                Section {
+                    Text("Your bed time is \n \(alertMessage)")
+                }
+                .padding(50)
+                .frame(maxWidth: .infinity)
+                .font(.title2)
+                .foregroundStyle(.primary)
+                .background(.indigo)
+                .cornerRadius(15)
                 
-                Text("When do you want to wakeup?")
-                DatePicker("Select time", selection: $wakeUp, displayedComponents: .hourAndMinute)
-                    .labelsHidden()
-                
-                Text("Desire amount of sleep")
-                Stepper("\(desiredSleep) hours", value: $desiredSleep, in: 4...16, step: 0.25)
-                
-                Text("Coffee intake")
-                Stepper("\(coffeeIntake) cup", value: $coffeeIntake, in: 1...20)
             }
             .navigationTitle("Better Rest")
             .toolbar{
-                Button("Calculate", action: sleepAmount)
+                Button("Calculate") {
+                    actualSleep()
+                }
             }
-            .alert("\(alertTitle)", isPresented: $showingAlert){
+            .alert(alertTitle, isPresented: $showingAlert){
                 Button("ok"){}
-            } message: {
+            }message: {
                 Text(alertMessage)
             }
         }
