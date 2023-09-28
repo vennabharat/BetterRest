@@ -26,7 +26,7 @@ struct ContentView: View {
         return date ?? Date.now
     }
     
-    func actualSleep() {
+    var actualSleep: Date {
         do{
             
             let config = MLModelConfiguration()
@@ -40,15 +40,14 @@ struct ContentView: View {
             
             let bedTime = wakeUp - prediction.actualSleep
             
-            alertTitle = "Your estimated bed time is"
-            alertMessage = bedTime.formatted(date: .omitted, time: .shortened)
-            
+            return bedTime
         } catch {
             alertTitle = "Error"
             alertMessage = "Data error"
         }
         
-        showingAlert.toggle()
+        return Date.now
+        
     }
     
     var body: some View {
@@ -66,7 +65,6 @@ struct ContentView: View {
                     }
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Cups of coffee consumed")
-                        //                    Stepper("Coffee cups: \(coffeeConsumed)", value: $coffeeConsumed, in: 1...20)
                         Picker("Coffee consumed", selection: $coffeeConsumed){
                             ForEach(1..<21){
                                 Text("\($0)")
@@ -75,7 +73,10 @@ struct ContentView: View {
                     }
                 }
                 Section {
-                    Text("Your bed time is \n \(alertMessage)")
+                    VStack{
+                        Text("Your bed time is")
+                        Text(actualSleep.formatted(date: .omitted, time: .shortened))
+                    }
                 }
                 .padding(50)
                 .frame(maxWidth: .infinity)
@@ -86,16 +87,6 @@ struct ContentView: View {
                 
             }
             .navigationTitle("Better Rest")
-            .toolbar{
-                Button("Calculate") {
-                    actualSleep()
-                }
-            }
-            .alert(alertTitle, isPresented: $showingAlert){
-                Button("ok"){}
-            }message: {
-                Text(alertMessage)
-            }
         }
     }
 }
